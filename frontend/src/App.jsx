@@ -7,7 +7,7 @@ import StatsPanel from "./components/StatsPanel.jsx";
 const WS_BASE =
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 
-export const UI_VERSION = "checkbox-models-v7";
+export const UI_VERSION = "no-status-panel-v8";
 
 const ALL_CATEGORIES = [
   "النفايات", "الطعام",

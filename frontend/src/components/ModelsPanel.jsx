@@ -12,17 +12,6 @@ const GROUPS = [
 
 const ALL_MODELS = GROUPS.flatMap((g) => g.models);
 
-function statusClass(mode) {
-  if (mode === "yolo") return "ok";
-  if (mode === "mock") return "warn";
-  return "off";
-}
-function statusBadge(mode) {
-  if (mode === "yolo") return "YOLO فعلي";
-  if (mode === "mock") return "Mock";
-  return "غير متوفر";
-}
-
 /* The three "groups" are *all* selected if every one of their models is
  * present in activeModels. */
 function isGroupChecked(group, activeModels) {
@@ -116,19 +105,6 @@ export default function ModelsPanel({ models, activeModels, onChange }) {
       </div>
 
       {warning && <div className="inline-warning">{warning}</div>}
-
-      <h2 style={{ marginTop: 18 }}>حالة النماذج</h2>
-      <div className="model-status-list">
-        {(models || []).map((m) => (
-          <div className="model-status-row" key={m.name}>
-            <span className="model-status-dot" style={{ background: m.color }} />
-            <span className="model-status-name">{m.display_ar}</span>
-            <span className={`status-tag ${statusClass(m.mode)}`}>
-              {statusBadge(m.mode)}
-            </span>
-          </div>
-        ))}
-      </div>
 
       <div className="footer-note">
         يمكن تبديل النماذج أثناء التشغيل دون إعادة تشغيل الخادم —
