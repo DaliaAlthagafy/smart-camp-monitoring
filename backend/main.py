@@ -153,16 +153,29 @@ async def stream(
     ws: WebSocket,
     source: str = Query("synthetic"),
     value: Optional[str] = Query(None),
-    fps: int = Query(8, ge=1, le=30),
+    fps: int = Query(8, ge=1, le=60),
+    speed: float = Query(1.0, ge=0.25, le=8.0),
+    skip: int = Query(1, ge=1, le=10),
+    annotate: bool = Query(False),
 ) -> None:
-    """Push annotated frames to the client.
+    """Push frame payloads to the client.
 
     Query params:
         source = synthetic | webcam | rtsp | upload
         value  = device index, RTSP url, or uploaded file id
+        fps    = base output rate (1..60)
+        speed  = multiplier applied to fps (0.25..8x)
+        skip   = analyze every Nth frame
+        annotate = if True, server burns bboxes into the JPEG
+                   (default False — the dashboard draws its own overlay)
     """
     await ws.accept()
-    log.info("WS connect: source=%s value=%r fps=%d", source, value, fps)
+    effective_fps = max(1, min(240, int(round(fps * speed))))
+    log.info(
+        "WS connect: source=%s value=%r fps=%d speed=%.2fx skip=%d "
+        "annotate=%s -> effective_fps=%d",
+        source, value, fps, speed, skip, annotate, effective_fps,
+    )
     label_map = {
         "synthetic": "synthetic",
         "webcam":    "webcam_server",
@@ -173,19 +186,27 @@ async def stream(
 
     try:
         if source == "synthetic":
-            gen = stream_synthetic(fps=fps, source_label=src_label)
+            gen = stream_synthetic(
+                fps=effective_fps, source_label=src_label, annotate_server=annotate,
+            )
         elif source == "webcam":
             try:
                 idx = int(value) if value else 0
             except (TypeError, ValueError):
                 idx = 0
-            gen = stream_source(idx, source_label=src_label, fps=fps, loop_video=False)
+            gen = stream_source(
+                idx, source_label=src_label, fps=effective_fps, loop_video=False,
+                skip=skip, annotate_server=annotate,
+            )
         elif source == "rtsp":
             if not value:
                 await ws.send_text(json.dumps({"type": "error", "message": "missing rtsp url"}))
                 await ws.close()
                 return
-            gen = stream_source(value, source_label=src_label, fps=fps, loop_video=False)
+            gen = stream_source(
+                value, source_label=src_label, fps=effective_fps, loop_video=False,
+                skip=skip, annotate_server=annotate,
+            )
         elif source == "upload":
             if not value:
                 await ws.send_text(json.dumps({"type": "error", "message": "missing upload id"}))
@@ -196,7 +217,10 @@ async def stream(
                 await ws.send_text(json.dumps({"type": "error", "message": "upload not found"}))
                 await ws.close()
                 return
-            gen = stream_source(str(path), source_label=src_label, fps=fps, loop_video=True)
+            gen = stream_source(
+                str(path), source_label=src_label, fps=effective_fps, loop_video=True,
+                skip=skip, annotate_server=annotate,
+            )
         else:
             await ws.send_text(json.dumps({"type": "error", "message": f"unknown source {source}"}))
             await ws.close()

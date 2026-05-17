@@ -12,10 +12,14 @@ export default function SourcePanel({
   source, setSource,
   rtspUrl, setRtspUrl,
   fps, setFps,
+  speed, setSpeed,
+  skip, setSkip,
+  clarity, setClarity,
   onStart, onStop, onUpload,
   isRunning, uploadId,
 }) {
   const fileRef = useRef(null);
+  const showSpeed = source === "upload" || source === "synthetic";
 
   return (
     <aside className="card">
@@ -67,13 +71,60 @@ export default function SourcePanel({
         </div>
       )}
 
-      <div className="field">
-        <label>الإطارات في الثانية (FPS)</label>
-        <select value={fps} onChange={(e) => setFps(Number(e.target.value))} disabled={isRunning}>
-          {[2, 4, 6, 8, 12, 15, 20].map((v) => (
-            <option key={v} value={v}>{v}</option>
-          ))}
-        </select>
+      <div className="grid-2">
+        <div className="field">
+          <label>الإطارات في الثانية (FPS)</label>
+          <select
+            value={fps}
+            onChange={(e) => setFps(Number(e.target.value))}
+            disabled={isRunning}
+          >
+            {[4, 8, 12, 15, 20, 24, 30].map((v) => (
+              <option key={v} value={v}>{v}</option>
+            ))}
+          </select>
+        </div>
+
+        {showSpeed && (
+          <div className="field">
+            <label>سرعة التحليل</label>
+            <select
+              value={speed}
+              onChange={(e) => setSpeed(Number(e.target.value))}
+              disabled={isRunning}
+            >
+              <option value={1}>1x</option>
+              <option value={2}>2x</option>
+              <option value={4}>4x</option>
+              <option value={8}>8x</option>
+            </select>
+          </div>
+        )}
+
+        <div className="field">
+          <label>تخطّي الإطارات</label>
+          <select
+            value={skip}
+            onChange={(e) => setSkip(Number(e.target.value))}
+            disabled={isRunning}
+          >
+            <option value={1}>كل إطار</option>
+            <option value={2}>كل إطار ثانٍ</option>
+            <option value={3}>كل إطار ثالث</option>
+            <option value={5}>كل خامس</option>
+          </select>
+        </div>
+
+        <div className="field">
+          <label>وضوح الصندوق</label>
+          <select
+            value={clarity}
+            onChange={(e) => setClarity(e.target.value)}
+          >
+            <option value="normal">عادي</option>
+            <option value="high">عالي</option>
+          </select>
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
@@ -86,10 +137,9 @@ export default function SourcePanel({
       </div>
 
       <div className="footer-note">
-        كاميرا المتصفح تلتقط الإطارات محليًا وترسلها إلى
-        <code dir="ltr"> /api/detect/frame</code> بشكل مستمر،
-        بينما باقي المصادر تُعالَج على الخادم وتُبَث عبر WebSocket
-        إطارًا تلو الآخر.
+        لرفع كفاءة معالجة الفيديو: ارفع FPS إلى 24/30، فعّل « تخطّي
+        الإطارات » أو زِد « سرعة التحليل ». وضوح الصندوق « عالي »
+        يضيف توهجًا وحدودًا أعرض لإبراز الاكتشافات.
       </div>
     </aside>
   );

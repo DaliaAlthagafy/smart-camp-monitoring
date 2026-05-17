@@ -23,8 +23,8 @@ MODEL_PATH = Path(__file__).parent / "models" / "waste_model.pt"
 
 # Bilingual category map. Keys are the Arabic labels surfaced in the UI.
 CATEGORIES = {
-    "النفايات": {"en": "waste", "color": "#ef4444"},
-    "الطعام": {"en": "food", "color": "#22c55e"},
+    "النفايات": {"en": "waste", "color": "#ff5436"},
+    "الطعام":   {"en": "food",  "color": "#22d3ee"},
 }
 
 # Map raw model class names (English) -> Arabic category.
