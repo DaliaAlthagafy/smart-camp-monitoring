@@ -2,12 +2,12 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import SourcePanel from "./components/SourcePanel.jsx";
 import ModelsPanel from "./components/ModelsPanel.jsx";
 import Viewer from "./components/Viewer.jsx";
-import DetectionPanel from "./components/DetectionPanel.jsx";
+import StatsPanel from "./components/StatsPanel.jsx";
 
 const WS_BASE =
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 
-export const UI_VERSION = "hygiene-three-models-v1";
+export const UI_VERSION = "ops-dashboard-v4";
 
 const ALL_CATEGORIES = [
   "النفايات", "الطعام",
@@ -388,7 +388,9 @@ export default function App() {
       </header>
 
       <main className="layout">
-        <div className="col">
+        {/* RTL: the first DOM child renders on the visual RIGHT.
+            Order = controls (right) → viewer (center) → stats (left). */}
+        <div className="col controls-col">
           <SourcePanel
             source={source} setSource={setSource}
             rtspUrl={rtspUrl} setRtspUrl={setRtspUrl}
@@ -418,20 +420,15 @@ export default function App() {
           liveFps={liveFps}
           detections={detections}
           error={error}
-          totals={totals}
           clarity={clarity}
-          activeModels={activeModels}
           modeLabel={modeLabel}
-          models={models}
         />
 
-        <DetectionPanel
-          detections={detections}
+        <StatsPanel
           totals={totals}
-          health={health}
-          engine={engine}
           activeModels={activeModels}
           models={models}
+          engine={engine}
         />
       </main>
     </div>

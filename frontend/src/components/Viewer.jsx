@@ -154,35 +154,13 @@ function WebcamOverlay({ webcamRef, containerRef, detections, clarity }) {
   return <canvas ref={canvasRef} className="overlay-canvas" />;
 }
 
-// Default seed (used only until /api/health arrives with the real list).
-const DEFAULT_CATEGORY_STRIP = [
-  { ar: "النفايات",      en: "waste",         color: "#ff5436", model: "waste" },
-  { ar: "الطعام",        en: "food",          color: "#22d3ee", model: "food" },
-];
-
-function buildStripFromModels(models) {
-  // Flatten every category each model can emit, preserving order.
-  const seen = new Set();
-  const strip = [];
-  for (const m of models || []) {
-    for (const c of m.categories || []) {
-      const key = c.ar;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      strip.push({ ar: c.ar, en: c.en, color: c.color, model: m.name });
-    }
-  }
-  return strip.length ? strip : DEFAULT_CATEGORY_STRIP;
-}
-
 export default function Viewer({
   frame, webcamRef, source, engine, status, statusLabel,
-  liveFps, detections, error, totals, clarity,
-  activeModels = ["waste", "food"], modeLabel, models = [],
+  liveFps, detections, error, clarity,
+  modeLabel,
 }) {
   const containerRef = useRef(null);
   const showWebcam = source === "browser-webcam";
-  const strip = buildStripFromModels(models);
 
   return (
     <section className="card">
@@ -238,26 +216,22 @@ export default function Viewer({
         )}
       </div>
 
-      <div className="stats-grid">
-        {strip.map((c) => {
-          const isActive = activeModels.includes(c.model);
-          return (
-            <div
-              key={c.ar}
-              className={`stat-card ${isActive ? "" : "muted"}`}
-              style={{ borderInlineStartColor: c.color }}
-            >
-              <div className="label">
-                <span className="swatch" style={{ background: c.color }} />
-                {c.ar}
-                {!isActive && <span className="off-tag">معطّل</span>}
-              </div>
-              <div className="value" style={{ color: c.color }}>
-                {totals[c.ar] || 0}
-              </div>
-            </div>
-          );
-        })}
+      {/* Below-viewer KPI grid removed — operational metrics now live in
+          the dedicated StatsPanel on the left of the dashboard. */}
+
+      <div className="viewer-footer">
+        <span className="vf-item">
+          <span className="vf-dot" style={{ background: "#86efac" }} />
+          أخضر = التزام
+        </span>
+        <span className="vf-item">
+          <span className="vf-dot" style={{ background: "#f59e0b" }} />
+          برتقالي = تحذير
+        </span>
+        <span className="vf-item">
+          <span className="vf-dot" style={{ background: "#ef4444" }} />
+          أحمر = مخالفة
+        </span>
       </div>
     </section>
   );
