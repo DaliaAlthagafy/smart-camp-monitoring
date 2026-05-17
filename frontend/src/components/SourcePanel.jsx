@@ -13,10 +13,9 @@ export default function SourcePanel({
   rtspUrl, setRtspUrl,
   fps, setFps,
   onStart, onStop, onUpload,
-  connected, uploadId,
+  isRunning, uploadId,
 }) {
   const fileRef = useRef(null);
-  const needsManualStart = source !== "browser-webcam";
 
   return (
     <aside className="card">
@@ -27,6 +26,7 @@ export default function SourcePanel({
             key={s.id}
             className={`source-btn ${source === s.id ? "active" : ""}`}
             onClick={() => setSource(s.id)}
+            disabled={isRunning}
           >
             <span>{s.label}</span>
             <span className="badge">{s.badge}</span>
@@ -43,6 +43,7 @@ export default function SourcePanel({
             onChange={(e) => setRtspUrl(e.target.value)}
             placeholder="rtsp://user:pass@192.168.1.10:554/stream"
             dir="ltr"
+            disabled={isRunning}
           />
         </div>
       )}
@@ -54,6 +55,7 @@ export default function SourcePanel({
             ref={fileRef}
             type="file"
             accept="video/*"
+            disabled={isRunning}
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) onUpload(f);
@@ -67,7 +69,7 @@ export default function SourcePanel({
 
       <div className="field">
         <label>الإطارات في الثانية (FPS)</label>
-        <select value={fps} onChange={(e) => setFps(Number(e.target.value))}>
+        <select value={fps} onChange={(e) => setFps(Number(e.target.value))} disabled={isRunning}>
           {[2, 4, 6, 8, 12, 15, 20].map((v) => (
             <option key={v} value={v}>{v}</option>
           ))}
@@ -75,19 +77,19 @@ export default function SourcePanel({
       </div>
 
       <div style={{ display: "flex", gap: 8 }}>
-        {needsManualStart && (
-          <button className="btn primary" onClick={() => onStart()} disabled={connected}>
-            بدء البث
-          </button>
-        )}
-        <button className="btn danger" onClick={onStop} disabled={!connected}>
-          إيقاف
+        <button className="btn primary" onClick={onStart} disabled={isRunning}>
+          ▶ بدء التحليل
+        </button>
+        <button className="btn danger" onClick={onStop} disabled={!isRunning}>
+          ■ إيقاف التحليل
         </button>
       </div>
 
       <div className="footer-note">
-        كاميرا المتصفح تعمل محليًا داخل الجهاز، بينما باقي المصادر تُعالَج
-        من الخادم عبر WebSocket.
+        كاميرا المتصفح تلتقط الإطارات محليًا وترسلها إلى
+        <code dir="ltr"> /api/detect/frame</code> بشكل مستمر،
+        بينما باقي المصادر تُعالَج على الخادم وتُبَث عبر WebSocket
+        إطارًا تلو الآخر.
       </div>
     </aside>
   );

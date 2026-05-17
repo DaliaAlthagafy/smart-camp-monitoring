@@ -1,9 +1,31 @@
 import React from "react";
 
-export default function DetectionPanel({ detections, totals, health }) {
+export default function DetectionPanel({ detections, totals, health, engine }) {
+  const isYolo = (engine || health?.engine) === "YOLO";
   return (
     <aside className="card">
-      <h2>الاكتشافات الحالية</h2>
+      <h2>محرّك الكشف</h2>
+      <div className={`engine-banner ${isYolo ? "ok" : "warn"}`}>
+        {isYolo ? (
+          <>
+            <strong>YOLO حقيقي</strong>
+            <div>الاستدلال يجري على الأوزان المدرَّبة لكل إطار.</div>
+          </>
+        ) : (
+          <>
+            <strong>وضع المحاكاة (Mock)</strong>
+            <div>
+              {health?.is_lfs_pointer
+                ? "ملف النموذج مؤشر Git-LFS فقط — نفّذ git lfs pull ثم أعد تحميل المحرّك."
+                : health?.model_present
+                ? "النموذج موجود لكن لم يُحمَّل — تحقّق من تثبيت ultralytics."
+                : "لم يتم العثور على waste_model.pt — يعمل النظام في وضع تجريبي."}
+            </div>
+          </>
+        )}
+      </div>
+
+      <h2 style={{ marginTop: 22 }}>الاكتشافات الحالية</h2>
       {detections.length === 0 ? (
         <div className="empty">لا توجد اكتشافات في الإطار الحالي</div>
       ) : (
@@ -41,16 +63,7 @@ export default function DetectionPanel({ detections, totals, health }) {
       </div>
 
       <div className="footer-note">
-        النموذج: <code dir="ltr">backend/models/waste_model.pt</code>
-        <br />
-        الحالة:{" "}
-        {health?.model_loaded
-          ? "نموذج YOLO محمَّل"
-          : health?.is_lfs_pointer
-          ? "ملف النموذج هو مؤشر Git-LFS فقط — نفّذ git lfs pull"
-          : health?.model_present
-          ? "النموذج موجود لكن لم يُحمَّل (تحقّق من ultralytics)"
-          : "وضع المحاكاة — أضف الأوزان لتفعيل YOLO"}
+        مسار النموذج: <code dir="ltr">backend/models/waste_model.pt</code>
       </div>
     </aside>
   );

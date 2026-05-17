@@ -8,7 +8,7 @@ detections so the dashboard works end-to-end before the trained model lands.
 
 from __future__ import annotations
 
-import os
+import logging
 import random
 import time
 from dataclasses import dataclass, asdict
@@ -16,6 +16,8 @@ from pathlib import Path
 from typing import List, Optional
 
 import numpy as np
+
+log = logging.getLogger("smartcamp.detector")
 
 MODEL_PATH = Path(__file__).parent / "models" / "waste_model.pt"
 
@@ -57,9 +59,13 @@ class Detector:
     def __init__(self, model_path: Path = MODEL_PATH):
         self.model_path = model_path
         self.model = None
-        self.mode = "mock"
+        self.mode = "mock"           # "yolo" or "mock"
+        self.engine_label = "MOCK"   # human label for logs / UI
         self._try_load()
 
+    # ------------------------------------------------------------------
+    # Loading
+    # ------------------------------------------------------------------
     def _is_lfs_pointer(self) -> bool:
         try:
             if self.model_path.stat().st_size > 4096:
@@ -72,38 +78,43 @@ class Detector:
 
     def _try_load(self) -> None:
         if not self.model_path.exists():
+            log.warning("model file not found at %s — using MOCK", self.model_path)
+            self.mode, self.engine_label = "mock", "MOCK"
             return
         if self._is_lfs_pointer():
-            print(
-                f"[detector] {self.model_path} is a Git-LFS pointer "
-                "(run `git lfs pull` to fetch the real weights); using mock"
+            log.warning(
+                "model file at %s is a Git-LFS pointer (run `git lfs pull`) — using MOCK",
+                self.model_path,
             )
-            self.model = None
-            self.mode = "mock"
+            self.model, self.mode, self.engine_label = None, "mock", "MOCK"
             return
         try:
             from ultralytics import YOLO  # type: ignore
 
             self.model = YOLO(str(self.model_path))
-            self.mode = "yolo"
-            print(f"[detector] loaded YOLO weights from {self.model_path}")
+            self.mode, self.engine_label = "yolo", "YOLO"
+            log.info("loaded real YOLO weights from %s", self.model_path)
         except Exception as exc:  # pragma: no cover - depends on env
-            print(f"[detector] could not load YOLO ({exc}); using mock")
-            self.model = None
-            self.mode = "mock"
+            log.warning("could not load YOLO (%s) — using MOCK", exc)
+            self.model, self.mode, self.engine_label = None, "mock", "MOCK"
 
     def reload(self) -> str:
         self._try_load()
         return self.mode
 
-    def predict(self, frame: np.ndarray) -> List[Detection]:
+    # ------------------------------------------------------------------
+    # Inference
+    # ------------------------------------------------------------------
+    def predict(self, frame: np.ndarray, source: str = "unknown") -> List[Detection]:
         if self.model is not None:
-            return self._predict_yolo(frame)
-        return self._predict_mock(frame)
+            log.info("[%s] Running YOLO inference on frame... (source=%s)", self.engine_label, source)
+            dets = self._predict_yolo(frame)
+        else:
+            log.info("[%s] Running MOCK inference on frame... (source=%s)", self.engine_label, source)
+            dets = self._predict_mock(frame)
+        log.info("[%s] Detections found: %d", self.engine_label, len(dets))
+        return dets
 
-    # ------------------------------------------------------------------
-    # YOLO inference
-    # ------------------------------------------------------------------
     def _predict_yolo(self, frame: np.ndarray) -> List[Detection]:
         h, w = frame.shape[:2]
         results = self.model.predict(frame, verbose=False, conf=0.35)
@@ -115,7 +126,6 @@ class Detector:
                 cls_name = names.get(cls_id, str(cls_id)).lower()
                 category = CLASS_TO_CATEGORY.get(cls_name)
                 if category is None:
-                    # Skip classes outside the monitored set.
                     continue
                 meta = CATEGORIES[category]
                 x1, y1, x2, y2 = box.xyxy[0].tolist()
@@ -130,11 +140,7 @@ class Detector:
                 )
         return detections
 
-    # ------------------------------------------------------------------
-    # Mock detections
-    # ------------------------------------------------------------------
     def _predict_mock(self, frame: np.ndarray) -> List[Detection]:
-        # Seed by time bucket so consecutive frames look stable but evolve.
         rng = random.Random(int(time.time() * 2))
         count = rng.randint(1, 3)
         detections: List[Detection] = []
