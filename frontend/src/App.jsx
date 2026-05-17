@@ -7,7 +7,7 @@ import StatsPanel from "./components/StatsPanel.jsx";
 const WS_BASE =
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 
-export const UI_VERSION = "clean-viewer-v5";
+export const UI_VERSION = "compact-source-v6";
 
 const ALL_CATEGORIES = [
   "النفايات", "الطعام",
@@ -32,8 +32,7 @@ const STATUS_LABELS = {
 
 function defaultFpsFor(source) {
   if (source === "upload") return 30;
-  if (source === "rtsp") return 24;
-  if (source === "synthetic") return 12;
+  // browser-webcam / server webcam — keep it real-time friendly.
   return 8;
 }
 
@@ -57,11 +56,10 @@ export default function App() {
     () => loadStoredActiveModels() || ["waste"]
   );
 
-  const [source, setSource] = useState("synthetic");
-  const [rtspUrl, setRtspUrl] = useState("");
+  const [source, setSource] = useState("browser-webcam");
   const [uploadId, setUploadId] = useState(null);
 
-  const [fps, setFps]       = useState(defaultFpsFor("synthetic"));
+  const [fps, setFps]       = useState(defaultFpsFor("browser-webcam"));
   const [speed, setSpeed]   = useState(1);
   const [skip, setSkip]     = useState(1);
   const [clarity, setClarity] = useState("high");
@@ -137,7 +135,7 @@ export default function App() {
   useEffect(() => {
     setFps(defaultFpsFor(source));
     setSpeed(1);
-    if (source !== "upload" && source !== "synthetic") setSkip(1);
+    if (source !== "upload") setSkip(1);
   }, [source]);
 
   const recordFrameTimestamp = useCallback(() => {
@@ -289,20 +287,15 @@ export default function App() {
     setTotals(emptyTotals());
     resetFps();
 
-    if (source === "rtsp" && !rtspUrl) {
-      setError("الرجاء إدخال رابط RTSP صالح"); setStatus("error"); return;
-    }
     if (source === "upload" && !uploadId) {
       setError("الرجاء رفع ملف فيديو أولًا"); setStatus("error"); return;
     }
 
-    if (source === "browser-webcam")   startBrowserWebcam();
-    else if (source === "synthetic")   startServerStream("synthetic");
-    else if (source === "webcam")      startServerStream("webcam", "0");
-    else if (source === "rtsp")        startServerStream("rtsp", rtspUrl);
-    else if (source === "upload")      startServerStream("upload", uploadId);
+    if      (source === "browser-webcam") startBrowserWebcam();
+    else if (source === "webcam")         startServerStream("webcam", "0");
+    else if (source === "upload")         startServerStream("upload", uploadId);
   }, [
-    source, rtspUrl, uploadId,
+    source, uploadId,
     stopAll, resetFps, startBrowserWebcam, startServerStream,
   ]);
 
@@ -393,7 +386,6 @@ export default function App() {
         <div className="col controls-col">
           <SourcePanel
             source={source} setSource={setSource}
-            rtspUrl={rtspUrl} setRtspUrl={setRtspUrl}
             fps={fps} setFps={setFps}
             speed={speed} setSpeed={setSpeed}
             skip={skip} setSkip={setSkip}

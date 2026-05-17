@@ -1,16 +1,15 @@
 import React, { useRef } from "react";
 
+// Only three operational sources are surfaced in the UI. Synthetic and
+// RTSP are still supported by the backend but intentionally hidden here.
 const SOURCES = [
-  { id: "synthetic",      label: "بث تجريبي",       badge: "Synthetic" },
   { id: "browser-webcam", label: "كاميرا المتصفح",  badge: "Webcam" },
   { id: "webcam",         label: "كاميرا الخادم",   badge: "Server cam" },
-  { id: "rtsp",           label: "كاميرا IP / RTSP", badge: "RTSP" },
   { id: "upload",         label: "ملف فيديو",       badge: "Upload" },
 ];
 
 export default function SourcePanel({
   source, setSource,
-  rtspUrl, setRtspUrl,
   fps, setFps,
   speed, setSpeed,
   skip, setSkip,
@@ -19,7 +18,9 @@ export default function SourcePanel({
   isRunning, uploadId,
 }) {
   const fileRef = useRef(null);
-  const showSpeed = source === "upload" || source === "synthetic";
+  // Speed multiplier only makes sense for sources we can drive faster than
+  // real-time — i.e. uploaded video. Webcams are intrinsically real-time.
+  const showSpeed = source === "upload";
 
   return (
     <aside className="card">
@@ -37,20 +38,6 @@ export default function SourcePanel({
           </button>
         ))}
       </div>
-
-      {source === "rtsp" && (
-        <div className="field">
-          <label>رابط RTSP / HTTP</label>
-          <input
-            type="text"
-            value={rtspUrl}
-            onChange={(e) => setRtspUrl(e.target.value)}
-            placeholder="rtsp://user:pass@192.168.1.10:554/stream"
-            dir="ltr"
-            disabled={isRunning}
-          />
-        </div>
-      )}
 
       {source === "upload" && (
         <div className="field">
@@ -137,9 +124,10 @@ export default function SourcePanel({
       </div>
 
       <div className="footer-note">
-        لرفع كفاءة معالجة الفيديو: ارفع FPS إلى 24/30، فعّل « تخطّي
-        الإطارات » أو زِد « سرعة التحليل ». وضوح الصندوق « عالي »
-        يضيف توهجًا وحدودًا أعرض لإبراز الاكتشافات.
+        كاميرا المتصفح تعمل محليًا على جهازك. كاميرا الخادم تستخدم
+        كاميرا الجهاز الذي يشغّل الخدمة. ملف الفيديو يُعالَج إطارًا
+        تلو الآخر — فعّل « تخطّي الإطارات » أو ارفع « سرعة التحليل »
+        لتسريع المعالجة.
       </div>
     </aside>
   );
