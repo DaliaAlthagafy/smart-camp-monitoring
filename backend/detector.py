@@ -28,9 +28,12 @@ MODELS_DIR = Path(__file__).parent / "models"
 
 # Per-category (Arabic) metadata shared with the frontend.
 CATEGORIES = {
-    # Waste & food
+    # Waste
     "النفايات":         {"en": "waste",         "color": "#ff5436", "severity": "alert"},
-    "الطعام":           {"en": "food",          "color": "#22d3ee", "severity": "info"},
+    # Food safety (3-class — green / amber / red)
+    "صالح":             {"en": "fresh",         "color": "#10b981", "severity": "ok"},
+    "يحتاج فحص":        {"en": "at_risk",       "color": "#f59e0b", "severity": "warn"},
+    "متعفن":            {"en": "rotten",        "color": "#ef4444", "severity": "violation"},
     # Hygiene — compliance (green family)
     "قفازات":           {"en": "gloves",        "color": "#10b981", "severity": "ok"},
     "كمامة":            {"en": "mask",          "color": "#14b8a6", "severity": "ok"},
@@ -239,15 +242,22 @@ class ModelRegistry:
             ),
             "food": ModelEntry(
                 name="food",
-                display_ar="الطعام",
+                display_ar="سلامة الغذاء",
                 display_en="food",
-                color="#22d3ee",
+                color="#10b981",
                 model_path=MODELS_DIR / "food_model.pt",
                 class_map={
-                    "food":  "الطعام",
-                    "meal":  "الطعام",
-                    "tray":  "الطعام",
-                    "plate": "الطعام",
+                    # Trained 3-class food safety model
+                    "fresh":    "صالح",
+                    "at_risk":  "يحتاج فحص",
+                    "at-risk":  "يحتاج فحص",
+                    "atrisk":   "يحتاج فحص",
+                    "rotten":   "متعفن",
+                    # Tolerant aliases in case the user re-trains with
+                    # alternate label names.
+                    "spoiled":  "متعفن",
+                    "expired":  "متعفن",
+                    "safe":     "صالح",
                 },
             ),
             "gloves": ModelEntry(

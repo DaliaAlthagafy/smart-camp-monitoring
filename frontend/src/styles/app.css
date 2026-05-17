@@ -293,7 +293,10 @@ body {
 }
 .module-card.inactive { opacity: 0.5; }
 .module-card.waste  { color: #ff5436; }
-.module-card.food   { color: #22d3ee; }
+.module-card.food.sev-ok           { color: #22c55e; border-color: rgba(34,197,94,0.45); }
+.module-card.food.sev-warn         { color: #f59e0b; border-color: rgba(245,158,11,0.45); }
+.module-card.food.sev-violation    { color: #ef4444; border-color: rgba(248,113,113,0.5);  }
+.module-card.food.sev-neutral      { color: #10b981; }
 .module-card.hygiene.sev-ok        { color: #22c55e; border-color: rgba(34,197,94,0.45); }
 .module-card.hygiene.sev-warn      { color: #f59e0b; border-color: rgba(245,158,11,0.45); }
 .module-card.hygiene.sev-violation { color: #ef4444; border-color: rgba(248,113,113,0.5);  }
@@ -409,6 +412,19 @@ body {
   margin-top: 2px;
   text-transform: none;
 }
+
+/* Food KPI variants — green for fresh, amber for at_risk, red is the
+ * existing default styling. */
+.food-kpis .kpi-ok {
+  border-color: rgba(16,185,129,0.32);
+  background: linear-gradient(180deg, rgba(16,185,129,0.10), rgba(16,185,129,0.02));
+}
+.food-kpis .kpi-ok .kpi-value { color: #34d399; }
+.food-kpis .kpi-warn {
+  border-color: rgba(245,158,11,0.32);
+  background: linear-gradient(180deg, rgba(245,158,11,0.10), rgba(245,158,11,0.02));
+}
+.food-kpis .kpi-warn .kpi-value { color: #fbbf24; }
 
 .hygiene-foot { color: var(--muted); }
 

@@ -15,11 +15,24 @@ const HYGIENE_MODELS = ["gloves", "mask", "headcover"];
 const OK_CATEGORIES = ["قفازات", "كمامة", "غطاء رأس"];
 const VIOLATION_CATEGORIES = ["بدون قفازات", "بدون كمامة", "بدون غطاء رأس"];
 
+// Food safety (3-class) — fresh ↔ at_risk ↔ rotten map to severities
+// the same way hygiene does, so the visual logic stays consistent.
+const FOOD_OK_CATEGORIES        = ["صالح"];
+const FOOD_WARN_CATEGORIES      = ["يحتاج فحص"];
+const FOOD_VIOLATION_CATEGORIES = ["متعفن"];
+
 function severityForCompliance(pct) {
   if (pct === null) return "neutral";
   if (pct >= 95) return "ok";
   if (pct >= 70) return "warn";
   return "violation";
+}
+
+function severityForFood({ fresh, atRisk, rotten }) {
+  if (rotten > 0) return "violation";
+  if (atRisk > 0) return "warn";
+  if (fresh  > 0) return "ok";
+  return "neutral";
 }
 
 function severityLabel(sev) {
@@ -69,20 +82,66 @@ function WasteModule({ totals, activeModels, models }) {
 function FoodModule({ totals, activeModels, models }) {
   const active = activeModels.includes("food");
   const m = models.find((x) => x.name === "food");
-  const count = totals["الطعام"] || 0;
+
+  const fresh   = totals["صالح"]        || 0;
+  const atRisk  = totals["يحتاج فحص"]   || 0;
+  const rotten  = totals["متعفن"]       || 0;
+  const total   = fresh + atRisk + rotten;
+  const safePct = total > 0 ? Math.round((fresh / total) * 100) : null;
+  const sev     = severityForFood({ fresh, atRisk, rotten });
+
   const badge =
     !m?.available ? "غير متوفر" :
     active        ? `نشط · ${m?.status_ar || ""}` : "غير نشط";
+
   return (
-    <div className={`module-card food ${active && m?.available ? "" : "inactive"}`}>
-      <ModuleHead icon="🍽️" title="سلامة الغذاء" active={active && m?.available} statusBadge={badge} />
-      <div className="module-primary">
-        <div className="primary-value" style={{ color: "#22d3ee" }}>{count}</div>
-        <div className="primary-label">عنصر غذائي مرصود</div>
+    <div className={`module-card food sev-${sev} ${active && m?.available ? "" : "inactive"}`}>
+      <ModuleHead
+        icon="🍽️"
+        title="سلامة الغذاء"
+        active={active && m?.available}
+        statusBadge={badge}
+      />
+
+      <div className="hygiene-main">
+        <div className="hygiene-tile compliance">
+          <div className="tile-label">نسبة الصلاحية</div>
+          <div className="tile-value">
+            {safePct === null ? "—" : `${safePct}%`}
+          </div>
+          <div className="compliance-bar">
+            <div className="compliance-fill" style={{ width: `${safePct ?? 0}%` }} />
+          </div>
+        </div>
+        <div className="hygiene-tile violations">
+          <div className="tile-label">عناصر متعفنة</div>
+          <div className="tile-value">{rotten}</div>
+          <div className="tile-sub">
+            {sev === "violation" ? "تنبيه — يحتاج إزالة فورية" :
+             sev === "warn"      ? "بنود تحتاج فحصًا" :
+             sev === "ok"        ? "ضمن الحدود الآمنة" : "في انتظار البيانات"}
+          </div>
+        </div>
       </div>
+
+      <div className="hygiene-kpis food-kpis">
+        <div className="kpi kpi-ok">
+          <span className="kpi-label">صالح</span>
+          <span className="kpi-value">{fresh}</span>
+        </div>
+        <div className="kpi kpi-warn">
+          <span className="kpi-label">يحتاج فحص</span>
+          <span className="kpi-value">{atRisk}</span>
+        </div>
+        <div className="kpi">
+          <span className="kpi-label">متعفن</span>
+          <span className="kpi-value">{rotten}</span>
+        </div>
+      </div>
+
       <div className="module-footer">
         {m?.available
-          ? "تتبّع الأصناف الغذائية ومستوى نظافة مكان الإعداد."
+          ? "ثلاث فئات: صالح (أخضر) / يحتاج فحص (برتقالي) / متعفن (أحمر)."
           : "في انتظار رفع نموذج سلامة الغذاء."}
       </div>
     </div>

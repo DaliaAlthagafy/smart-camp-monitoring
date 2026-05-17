@@ -33,7 +33,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartcamp.api")
 
-BACKEND_VERSION = "no-status-panel-v8"
+BACKEND_VERSION = "food-sync-v9"
 
 BASE_DIR = Path(__file__).parent
 UPLOAD_DIR = BASE_DIR / "uploads"

@@ -7,17 +7,32 @@ import StatsPanel from "./components/StatsPanel.jsx";
 const WS_BASE =
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 
-export const UI_VERSION = "no-status-panel-v8";
+export const UI_VERSION = "food-sync-v9";
 
+/* All Arabic categories the backend can emit. Used to seed a fully
+ * populated counts object so the dashboard never breaks because a
+ * key is missing — values are recomputed every frame from the
+ * current detections array (no historical accumulation). */
 const ALL_CATEGORIES = [
-  "النفايات", "الطعام",
+  "النفايات",
+  "صالح", "يحتاج فحص", "متعفن",
   "قفازات", "بدون قفازات",
   "كمامة",  "بدون كمامة",
   "غطاء رأس", "بدون غطاء رأس",
 ];
 
-function emptyTotals() {
-  return Object.fromEntries(ALL_CATEGORIES.map((c) => [c, 0]));
+/** Live counts for the *current* frame only. Pass it the
+ *  `detections` array straight from the most recent payload. */
+function countsForFrame(detections) {
+  const counts = Object.fromEntries(ALL_CATEGORIES.map((c) => [c, 0]));
+  for (const d of detections || []) {
+    if (counts[d.category] !== undefined) {
+      counts[d.category] += 1;
+    } else {
+      counts[d.category] = 1;
+    }
+  }
+  return counts;
 }
 
 const LS_ACTIVE_MODELS = "scm.activeModels";
@@ -69,7 +84,9 @@ export default function App() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
   const [liveFps, setLiveFps] = useState(0);
-  const [totals, setTotals] = useState(() => emptyTotals());
+  // `totals` is intentionally NOT stored — it's derived per-render from
+  // `detections` so the dashboard always mirrors the current frame and
+  // resets correctly when detections disappear.
 
   const wsRef = useRef(null);
   const webcamRef = useRef(null);
@@ -194,16 +211,12 @@ export default function App() {
         }
         if (msg.type === "frame") {
           setFrame(`data:image/jpeg;base64,${msg.image}`);
+          // Single source of truth for the StatsPanel — current-frame
+          // detections only. No accumulator → counters reset when
+          // detections disappear from the frame.
           setDetections(msg.detections || []);
           if (msg.engine) setEngine(msg.engine);
           recordFrameTimestamp();
-          if (msg.detections?.length) {
-            setTotals((prev) => {
-              const next = { ...prev };
-              for (const d of msg.detections) next[d.category] = (next[d.category] || 0) + 1;
-              return next;
-            });
-          }
         }
       };
     },
@@ -255,13 +268,6 @@ export default function App() {
           setDetections(json.detections || []);
           if (json.engine) setEngine(json.engine);
           recordFrameTimestamp();
-          if (json.detections?.length) {
-            setTotals((prev) => {
-              const next = { ...prev };
-              for (const d of json.detections) next[d.category] = (next[d.category] || 0) + 1;
-              return next;
-            });
-          }
         } catch (e) {
           console.error("webcam tick failed", e);
         } finally {
@@ -281,8 +287,7 @@ export default function App() {
     stopAll();
     setError(null);
     setFrame(null);
-    setDetections([]);
-    setTotals(emptyTotals());
+    setDetections([]);     // clears derived totals automatically
     resetFps();
 
     if (source === "upload" && !uploadId) {
@@ -341,6 +346,10 @@ export default function App() {
     if (!activeModels.length) return "(لا يوجد نموذج نشط)";
     return `مخصّص: ${activeModels.join(" + ")}`;
   }, [activeModels]);
+
+  // Derive current-frame totals from the live detections — the single
+  // source of truth shared by the bbox overlay and the StatsPanel.
+  const totals = useMemo(() => countsForFrame(detections), [detections]);
 
   return (
     <div className="app">
