@@ -33,11 +33,13 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartcamp.api")
 
+BACKEND_VERSION = "overlay-speed-v2"
+
 BASE_DIR = Path(__file__).parent
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(exist_ok=True)
 
-app = FastAPI(title="Smart Camp Monitoring", version="0.2.0")
+app = FastAPI(title="Smart Camp Monitoring", version=BACKEND_VERSION)
 
 app.add_middleware(
     CORSMiddleware,
@@ -53,6 +55,7 @@ def _banner() -> None:
     det = get_detector()
     line = "=" * 60
     log.info(line)
+    log.info("Smart Camp Monitoring — BACKEND VERSION: %s", BACKEND_VERSION)
     if det.mode == "yolo":
         log.info("Smart Camp Monitoring — ACTIVE ENGINE: REAL YOLO")
         log.info("  weights: %s", det.model_path)
@@ -72,6 +75,7 @@ def health() -> dict:
     det = get_detector()
     return {
         "status": "ok",
+        "version": BACKEND_VERSION,
         "detector_mode": det.mode,
         "engine": det.engine_label,
         "model_path": str(det.model_path),

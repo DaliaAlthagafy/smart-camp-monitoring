@@ -6,6 +6,8 @@ import DetectionPanel from "./components/DetectionPanel.jsx";
 const WS_BASE =
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 
+export const UI_VERSION = "overlay-speed-v2";
+
 const STATUS_LABELS = {
   idle:    { ar: "متوقف",                cls: "" },
   live:    { ar: "جاري التحليل المباشر", cls: "live" },
@@ -24,6 +26,7 @@ function defaultFpsFor(source) {
 
 export default function App() {
   const [health, setHealth] = useState(null);
+  const [backendVersion, setBackendVersion] = useState(null);
   const [source, setSource] = useState("synthetic");
   const [rtspUrl, setRtspUrl] = useState("");
   const [uploadId, setUploadId] = useState(null);
@@ -55,6 +58,11 @@ export default function App() {
       .then((h) => {
         setHealth(h);
         setEngine(h.engine || (h.detector_mode === "yolo" ? "YOLO" : "MOCK"));
+        setBackendVersion(h.version || null);
+        console.info(
+          `%cSmart Camp Monitoring — UI ${UI_VERSION} · backend ${h.version || "?"}`,
+          "background:#38bdf8;color:#0a0e17;padding:2px 8px;border-radius:4px;font-weight:700",
+        );
       })
       .catch(() => setHealth(null));
   }, []);
@@ -256,7 +264,13 @@ export default function App() {
           <div className="brand-mark" />
           <div>
             <h1>مراقبة المخيم الذكية</h1>
-            <div className="sub">Smart Camp Monitoring · لوحة تحكم مباشرة</div>
+            <div className="sub">
+              Smart Camp Monitoring · لوحة تحكم مباشرة
+              <span className="version-chip" title="UI build tag">
+                UI Version: <strong>{UI_VERSION}</strong>
+                {backendVersion ? <> · backend: <strong>{backendVersion}</strong></> : null}
+              </span>
+            </div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
