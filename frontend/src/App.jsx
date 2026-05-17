@@ -1,12 +1,15 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import SourcePanel from "./components/SourcePanel.jsx";
+import ModelsPanel from "./components/ModelsPanel.jsx";
 import Viewer from "./components/Viewer.jsx";
 import DetectionPanel from "./components/DetectionPanel.jsx";
 
 const WS_BASE =
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 
-export const UI_VERSION = "overlay-speed-v2";
+export const UI_VERSION = "models-select-v3";
+
+const LS_ACTIVE_MODELS = "scm.activeModels";
 
 const STATUS_LABELS = {
   idle:    { ar: "متوقف",                cls: "" },
@@ -16,7 +19,6 @@ const STATUS_LABELS = {
   error:   { ar: "خطأ في التشغيل",        cls: "err" },
 };
 
-// Sensible default FPS per source.
 function defaultFpsFor(source) {
   if (source === "upload") return 30;
   if (source === "rtsp") return 24;
@@ -24,9 +26,26 @@ function defaultFpsFor(source) {
   return 8;
 }
 
+function loadStoredActiveModels() {
+  try {
+    const raw = localStorage.getItem(LS_ACTIVE_MODELS);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed) && parsed.every((x) => typeof x === "string")) {
+      return parsed;
+    }
+  } catch {}
+  return null;
+}
+
 export default function App() {
   const [health, setHealth] = useState(null);
   const [backendVersion, setBackendVersion] = useState(null);
+  const [models, setModels] = useState([]);
+  const [activeModels, setActiveModels] = useState(
+    () => loadStoredActiveModels() || ["waste"]
+  );
+
   const [source, setSource] = useState("synthetic");
   const [rtspUrl, setRtspUrl] = useState("");
   const [uploadId, setUploadId] = useState(null);
@@ -52,22 +71,58 @@ export default function App() {
   const fpsWindowRef = useRef([]);
 
   // ---------------------------------------------------------------------
+  // Boot: pull health, then sync stored active models to backend.
+  // ---------------------------------------------------------------------
   useEffect(() => {
-    fetch("/api/health")
-      .then((r) => r.json())
-      .then((h) => {
+    (async () => {
+      try {
+        const h = await fetch("/api/health").then((r) => r.json());
         setHealth(h);
-        setEngine(h.engine || (h.detector_mode === "yolo" ? "YOLO" : "MOCK"));
         setBackendVersion(h.version || null);
+        setEngine(h.engine || "MOCK");
+        setModels(h.models || []);
+        const available = (h.models || []).filter((m) => m.available).map((m) => m.name);
+        let desired = loadStoredActiveModels();
+        if (!desired || !desired.length) desired = h.active_models || ["waste"];
+        desired = desired.filter((n) => available.includes(n));
+        if (!desired.length && available.length) desired = [available[0]];
+        if (!desired.length) desired = h.active_models || ["waste"];
+        await applyActiveModels(desired, /*remoteSync*/ true);
         console.info(
           `%cSmart Camp Monitoring — UI ${UI_VERSION} · backend ${h.version || "?"}`,
           "background:#38bdf8;color:#0a0e17;padding:2px 8px;border-radius:4px;font-weight:700",
         );
-      })
-      .catch(() => setHealth(null));
+      } catch (e) {
+        console.error("health fetch failed", e);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Adjust default fps when the user picks a different source.
+  // ---------------------------------------------------------------------
+  const applyActiveModels = useCallback(async (nextList, remoteSync = true) => {
+    if (!Array.isArray(nextList) || nextList.length === 0) return;
+    setActiveModels(nextList);
+    try {
+      localStorage.setItem(LS_ACTIVE_MODELS, JSON.stringify(nextList));
+    } catch {}
+    if (!remoteSync) return;
+    try {
+      const r = await fetch("/api/models/select", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ active_models: nextList }),
+      });
+      const json = await r.json();
+      setModels(json.models || []);
+      setActiveModels(json.active_models || nextList);
+      if (json.engine) setEngine(json.engine);
+    } catch (e) {
+      console.error("model select failed", e);
+    }
+  }, []);
+
+  // ---------------------------------------------------------------------
   useEffect(() => {
     setFps(defaultFpsFor(source));
     setSpeed(1);
@@ -103,7 +158,7 @@ export default function App() {
   useEffect(() => () => stopAll(), [stopAll]);
 
   // ---------------------------------------------------------------------
-  // Server-side stream (synthetic / webcam-server / rtsp / upload)
+  // Server-side stream
   // ---------------------------------------------------------------------
   const startServerStream = useCallback(
     (src, value) => {
@@ -170,7 +225,6 @@ export default function App() {
       const tick = async () => {
         const video = webcamRef.current;
         if (!video || video.readyState < 2) return;
-        // Honor the skip control on the client side for the webcam path.
         tickCount += 1;
         if (skip > 1 && (tickCount - 1) % skip !== 0) {
           recordFrameTimestamp();
@@ -253,9 +307,19 @@ export default function App() {
   const statusInfo = STATUS_LABELS[status] || STATUS_LABELS.idle;
   const engineInfo = useMemo(() => engine === "YOLO"
     ? { text: "محرّك الكشف: YOLO حقيقي", cls: "live" }
+    : engine === "NONE"
+    ? { text: "محرّك الكشف: لا يوجد نموذج نشط", cls: "err" }
     : { text: "محرّك الكشف: محاكاة (Mock)", cls: "mock" }, [engine]);
 
   const isRunning = status === "live" || status === "video";
+
+  const modeLabel = useMemo(() => {
+    const set = new Set(activeModels);
+    if (set.has("waste") && set.has("food")) return "النموذجان معًا (نفايات + طعام)";
+    if (set.has("waste")) return "نموذج النفايات فقط";
+    if (set.has("food"))  return "نموذج الطعام فقط";
+    return "(لا يوجد نموذج نشط)";
+  }, [activeModels]);
 
   return (
     <div className="app">
@@ -278,6 +342,10 @@ export default function App() {
             <span className={`dot ${engineInfo.cls}`} />
             {engineInfo.text}
           </span>
+          <span className="status-pill" title="الوضع المُختار من نماذج التحليل">
+            <span className="dot" style={{ background: "#a78bfa" }} />
+            الوضع: {modeLabel}
+          </span>
           <span className={`status-pill status-${status}`}>
             <span className={`dot ${statusInfo.cls}`} />
             {statusInfo.ar}
@@ -290,17 +358,25 @@ export default function App() {
       </header>
 
       <main className="layout">
-        <SourcePanel
-          source={source} setSource={setSource}
-          rtspUrl={rtspUrl} setRtspUrl={setRtspUrl}
-          fps={fps} setFps={setFps}
-          speed={speed} setSpeed={setSpeed}
-          skip={skip} setSkip={setSkip}
-          clarity={clarity} setClarity={setClarity}
-          onStart={startAnalysis} onStop={stopAll}
-          onUpload={uploadVideo}
-          isRunning={isRunning} uploadId={uploadId}
-        />
+        <div className="col">
+          <SourcePanel
+            source={source} setSource={setSource}
+            rtspUrl={rtspUrl} setRtspUrl={setRtspUrl}
+            fps={fps} setFps={setFps}
+            speed={speed} setSpeed={setSpeed}
+            skip={skip} setSkip={setSkip}
+            clarity={clarity} setClarity={setClarity}
+            onStart={startAnalysis} onStop={stopAll}
+            onUpload={uploadVideo}
+            isRunning={isRunning} uploadId={uploadId}
+          />
+
+          <ModelsPanel
+            models={models}
+            activeModels={activeModels}
+            onChange={(next) => applyActiveModels(next)}
+          />
+        </div>
 
         <Viewer
           frame={frame}
@@ -314,6 +390,8 @@ export default function App() {
           error={error}
           totals={totals}
           clarity={clarity}
+          activeModels={activeModels}
+          modeLabel={modeLabel}
         />
 
         <DetectionPanel
@@ -321,6 +399,8 @@ export default function App() {
           totals={totals}
           health={health}
           engine={engine}
+          activeModels={activeModels}
+          models={models}
         />
       </main>
     </div>

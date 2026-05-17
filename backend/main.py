@@ -7,7 +7,7 @@ import json
 import logging
 import uuid
 from pathlib import Path
-from typing import Optional
+from typing import List, Optional
 
 import cv2
 import numpy as np
@@ -23,7 +23,7 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from detector import CATEGORIES, get_detector
+from detector import CATEGORIES, get_registry
 from streamer import annotate, encode_jpeg, stream_source, stream_synthetic
 
 logging.basicConfig(
@@ -33,7 +33,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartcamp.api")
 
-BACKEND_VERSION = "overlay-speed-v2"
+BACKEND_VERSION = "models-select-v3"
 
 BASE_DIR = Path(__file__).parent
 UPLOAD_DIR = BASE_DIR / "uploads"
@@ -52,59 +52,81 @@ app.add_middleware(
 
 @app.on_event("startup")
 def _banner() -> None:
-    det = get_detector()
+    reg = get_registry()
     line = "=" * 60
     log.info(line)
     log.info("Smart Camp Monitoring — BACKEND VERSION: %s", BACKEND_VERSION)
-    if det.mode == "yolo":
-        log.info("Smart Camp Monitoring — ACTIVE ENGINE: REAL YOLO")
-        log.info("  weights: %s", det.model_path)
-    else:
-        log.info("Smart Camp Monitoring — ACTIVE ENGINE: MOCK")
-        if det._is_lfs_pointer():
-            log.info("  reason: model file is a Git-LFS pointer (run `git lfs pull`)")
-        elif not det.model_path.exists():
-            log.info("  reason: %s not found", det.model_path)
-        else:
-            log.info("  reason: ultralytics could not load the model")
+    log.info("Registered models:")
+    for s in reg.statuses():
+        log.info(
+            "  - %-6s (%s): mode=%s  path=%s",
+            s["name"], s["display_ar"], s["mode"], s["model_path"],
+        )
+    log.info("Active models: %s", " + ".join(reg.active) or "(none)")
     log.info(line)
 
 
+# ---------------------------------------------------------------------------
+# Health & model management
+# ---------------------------------------------------------------------------
+
 @app.get("/api/health")
 def health() -> dict:
-    det = get_detector()
+    reg = get_registry()
     return {
         "status": "ok",
         "version": BACKEND_VERSION,
-        "detector_mode": det.mode,
-        "engine": det.engine_label,
-        "model_path": str(det.model_path),
-        "model_present": det.model_path.exists(),
-        "model_loaded": det.model is not None,
-        "is_lfs_pointer": det._is_lfs_pointer(),
+        "engine": reg.engine_label(),
+        "overall_mode": reg.overall_mode(),
+        "active_models": list(reg.active),
+        "models": reg.statuses(),
         "categories": [
-            {"ar": ar, "en": meta["en"], "color": meta["color"]}
-            for ar, meta in CATEGORIES.items()
+            {"ar": ar, "en": m["en"], "color": m["color"]}
+            for ar, m in CATEGORIES.items()
         ],
+    }
+
+
+@app.get("/api/models")
+def list_models() -> dict:
+    reg = get_registry()
+    return {"active_models": list(reg.active), "models": reg.statuses()}
+
+
+class ModelSelectPayload(BaseModel):
+    active_models: List[str]
+
+
+@app.post("/api/models/select")
+def select_models(payload: ModelSelectPayload) -> dict:
+    reg = get_registry()
+    reg.set_active(payload.active_models)
+    return {
+        "active_models": list(reg.active),
+        "models": reg.statuses(),
+        "engine": reg.engine_label(),
     }
 
 
 @app.post("/api/detector/reload")
 def reload_detector() -> dict:
-    det = get_detector()
-    mode = det.reload()
-    log.info("detector reloaded: mode=%s engine=%s", mode, det.engine_label)
-    return {"mode": mode, "engine": det.engine_label}
+    reg = get_registry()
+    reg.reload()
+    return {
+        "engine": reg.engine_label(),
+        "active_models": list(reg.active),
+        "models": reg.statuses(),
+    }
 
 
 # ---------------------------------------------------------------------------
-# Single-frame detection (used by the browser webcam loop)
+# Single-frame detection
 # ---------------------------------------------------------------------------
 
 class FramePayload(BaseModel):
-    image: str  # base64-encoded JPEG/PNG, optional data URL prefix
+    image: str
     source: Optional[str] = "webcam"
-    annotate: Optional[bool] = False  # browser draws its own overlay by default
+    annotate: Optional[bool] = False
 
 
 @app.post("/api/detect/frame")
@@ -122,12 +144,12 @@ def detect_frame(payload: FramePayload) -> dict:
     if frame is None:
         raise HTTPException(status_code=400, detail="cannot decode image")
 
-    detector = get_detector()
+    reg = get_registry()
     log.info("Current source: %s", payload.source or "webcam")
-    detections = detector.predict(frame, source=payload.source or "webcam")
+    detections = reg.predict_all(frame, source=payload.source or "webcam")
     response = {
-        "mode": detector.mode,
-        "engine": detector.engine_label,
+        "engine": reg.engine_label(),
+        "active_models": list(reg.active),
         "source": payload.source or "webcam",
         "detections": [d.to_dict() for d in detections],
     }
@@ -137,7 +159,7 @@ def detect_frame(payload: FramePayload) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Video upload + processing
+# Upload + WebSocket stream
 # ---------------------------------------------------------------------------
 
 @app.post("/api/upload")
@@ -162,17 +184,6 @@ async def stream(
     skip: int = Query(1, ge=1, le=10),
     annotate: bool = Query(False),
 ) -> None:
-    """Push frame payloads to the client.
-
-    Query params:
-        source = synthetic | webcam | rtsp | upload
-        value  = device index, RTSP url, or uploaded file id
-        fps    = base output rate (1..60)
-        speed  = multiplier applied to fps (0.25..8x)
-        skip   = analyze every Nth frame
-        annotate = if True, server burns bboxes into the JPEG
-                   (default False — the dashboard draws its own overlay)
-    """
     await ws.accept()
     effective_fps = max(1, min(240, int(round(fps * speed))))
     log.info(

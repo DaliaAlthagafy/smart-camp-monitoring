@@ -157,6 +157,7 @@ function WebcamOverlay({ webcamRef, containerRef, detections, clarity }) {
 export default function Viewer({
   frame, webcamRef, source, engine, status, statusLabel,
   liveFps, detections, error, totals, clarity,
+  activeModels = ["waste", "food"], modeLabel,
 }) {
   const containerRef = useRef(null);
   const showWebcam = source === "browser-webcam";
@@ -175,6 +176,7 @@ export default function Viewer({
           <span className="tag">
             وضوح الصندوق: {clarity === "high" ? "عالي" : "عادي"}
           </span>
+          {modeLabel && <span className="tag">الوضع: {modeLabel}</span>}
         </div>
 
         {/* Browser webcam: persistent <video> + overlay canvas. */}
@@ -215,12 +217,18 @@ export default function Viewer({
       </div>
 
       <div className="stats">
-        <div className="stat waste">
-          <div className="label">النفايات (إجمالي الاكتشافات)</div>
+        <div className={`stat waste ${activeModels.includes("waste") ? "" : "muted"}`}>
+          <div className="label">
+            النفايات (إجمالي الاكتشافات)
+            {!activeModels.includes("waste") && <span className="off-tag">معطّل</span>}
+          </div>
           <div className="value">{totals["النفايات"] || 0}</div>
         </div>
-        <div className="stat food">
-          <div className="label">الطعام (إجمالي الاكتشافات)</div>
+        <div className={`stat food ${activeModels.includes("food") ? "" : "muted"}`}>
+          <div className="label">
+            الطعام (إجمالي الاكتشافات)
+            {!activeModels.includes("food") && <span className="off-tag">معطّل</span>}
+          </div>
           <div className="value">{totals["الطعام"] || 0}</div>
         </div>
       </div>
