@@ -7,7 +7,18 @@ import DetectionPanel from "./components/DetectionPanel.jsx";
 const WS_BASE =
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 
-export const UI_VERSION = "models-select-v3";
+export const UI_VERSION = "hygiene-three-models-v1";
+
+const ALL_CATEGORIES = [
+  "النفايات", "الطعام",
+  "قفازات", "بدون قفازات",
+  "كمامة",  "بدون كمامة",
+  "غطاء رأس", "بدون غطاء رأس",
+];
+
+function emptyTotals() {
+  return Object.fromEntries(ALL_CATEGORIES.map((c) => [c, 0]));
+}
 
 const LS_ACTIVE_MODELS = "scm.activeModels";
 
@@ -61,7 +72,7 @@ export default function App() {
   const [status, setStatus] = useState("idle");
   const [error, setError] = useState(null);
   const [liveFps, setLiveFps] = useState(0);
-  const [totals, setTotals] = useState({ النفايات: 0, الطعام: 0 });
+  const [totals, setTotals] = useState(() => emptyTotals());
 
   const wsRef = useRef(null);
   const webcamRef = useRef(null);
@@ -275,7 +286,7 @@ export default function App() {
     setError(null);
     setFrame(null);
     setDetections([]);
-    setTotals({ النفايات: 0, الطعام: 0 });
+    setTotals(emptyTotals());
     resetFps();
 
     if (source === "rtsp" && !rtspUrl) {
@@ -315,10 +326,29 @@ export default function App() {
 
   const modeLabel = useMemo(() => {
     const set = new Set(activeModels);
-    if (set.has("waste") && set.has("food")) return "النموذجان معًا (نفايات + طعام)";
-    if (set.has("waste")) return "نموذج النفايات فقط";
-    if (set.has("food"))  return "نموذج الطعام فقط";
-    return "(لا يوجد نموذج نشط)";
+    const hygieneAll =
+      set.has("gloves") && set.has("mask") && set.has("headcover");
+    if (set.size === 5 && hygieneAll && set.has("waste") && set.has("food")) {
+      return "كل النماذج (نفايات + طعام + التزام العاملين)";
+    }
+    if (hygieneAll && !set.has("waste") && !set.has("food")) {
+      return "نماذج التزام العاملين (قفازات + كمامة + غطاء رأس)";
+    }
+    if (set.has("waste") && set.has("food") && set.size === 2) {
+      return "النفايات + الطعام";
+    }
+    if (set.size === 1) {
+      const only = activeModels[0];
+      return ({
+        waste:     "نموذج النفايات فقط",
+        food:      "نموذج الطعام فقط",
+        gloves:    "نموذج القفازات فقط",
+        mask:      "نموذج الكمامة فقط",
+        headcover: "نموذج غطاء الرأس فقط",
+      })[only] || `نموذج ${only}`;
+    }
+    if (!activeModels.length) return "(لا يوجد نموذج نشط)";
+    return `مخصّص: ${activeModels.join(" + ")}`;
   }, [activeModels]);
 
   return (
@@ -392,6 +422,7 @@ export default function App() {
           clarity={clarity}
           activeModels={activeModels}
           modeLabel={modeLabel}
+          models={models}
         />
 
         <DetectionPanel

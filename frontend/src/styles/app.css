@@ -268,6 +268,45 @@ body {
 .stat.waste .value { color: var(--waste); }
 .stat.food  .value { color: var(--food); }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+.stat-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-inline-start: 4px solid var(--accent);
+  border-radius: 12px;
+  padding: 10px 12px;
+  transition: opacity 0.15s ease;
+}
+.stat-card .label {
+  font-size: 12px;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.stat-card .value { font-size: 22px; font-weight: 700; margin-top: 4px; }
+.stat-card.muted { opacity: 0.45; }
+
+.model-cats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 2px;
+}
+.cat-pill {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid;
+  background: rgba(8,11,20,0.55);
+}
+.cat-pill.sev-violation { font-weight: 700; }
+
 .det-list { display: grid; gap: 8px; max-height: 380px; overflow: auto; }
 .det-item {
   display: flex;

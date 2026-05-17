@@ -40,8 +40,13 @@ export default function DetectionPanel({
                 <span className="swatch" style={{ background: d.color }} />
                 <strong>{d.category}</strong>
                 <span className="model-pill" style={{ borderColor: d.color, color: d.color }}>
-                  {d.model_name === "waste" ? "نموذج النفايات" :
-                   d.model_name === "food"  ? "نموذج الطعام"   : d.model_name}
+                  {({
+                    waste:     "نموذج النفايات",
+                    food:      "نموذج الطعام",
+                    gloves:    "نموذج القفازات",
+                    mask:      "نموذج الكمامة",
+                    headcover: "نموذج غطاء الرأس",
+                  })[d.model_name] || `نموذج ${d.model_name}`}
                 </span>
               </div>
               <span className="conf">{Math.round(d.confidence * 100)}%</span>
@@ -52,34 +57,39 @@ export default function DetectionPanel({
 
       <h2 style={{ marginTop: 22 }}>الفئات المُراقَبة</h2>
       <div className="det-list">
-        {(health?.categories || [
-          { ar: "النفايات", en: "waste", color: "#ff5436" },
-          { ar: "الطعام",   en: "food",  color: "#22d3ee" },
-        ]).map((c) => {
-          const modelInfo = byName[c.en];
-          const isActive  = activeModels.includes(c.en);
-          return (
-            <div
-              className={`det-item ${isActive ? "" : "muted"}`}
-              key={c.ar}
-              style={{ borderInlineStartColor: c.color, borderInlineStartWidth: 4, borderInlineStartStyle: "solid" }}
-            >
-              <div className="left">
-                <span className="swatch" style={{ background: c.color }} />
-                <strong>{c.ar}</strong>
-                <span className="conf">
-                  ({c.en}) · {modelInfo?.status_ar || "—"}
-                </span>
+        {models.flatMap((m) =>
+          (m.categories || []).map((c) => {
+            const isActive = activeModels.includes(m.name);
+            return (
+              <div
+                className={`det-item ${isActive ? "" : "muted"}`}
+                key={`${m.name}-${c.ar}`}
+                style={{
+                  borderInlineStartColor: c.color,
+                  borderInlineStartWidth: 4,
+                  borderInlineStartStyle: "solid",
+                }}
+              >
+                <div className="left">
+                  <span className="swatch" style={{ background: c.color }} />
+                  <strong>{c.ar}</strong>
+                  <span className="conf">
+                    ({c.en}) · {m.status_ar}
+                  </span>
+                </div>
+                <span className="conf">{totals?.[c.ar] || 0}</span>
               </div>
-              <span className="conf">{totals?.[c.ar] || 0}</span>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
 
       <div className="footer-note">
-        النماذج: <code dir="ltr">backend/models/waste_model.pt</code>{" "}
-        و <code dir="ltr">food_model.pt</code>
+        النماذج: <code dir="ltr">waste_model.pt</code>،{" "}
+        <code dir="ltr">food_model.pt</code>،{" "}
+        <code dir="ltr">gloves_model.pt</code>،{" "}
+        <code dir="ltr">mask_model.pt</code>،{" "}
+        <code dir="ltr">headcover_model.pt</code>
       </div>
     </aside>
   );
