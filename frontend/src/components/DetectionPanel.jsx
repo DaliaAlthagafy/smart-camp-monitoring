@@ -46,6 +46,10 @@ export default function DetectionPanel({ detections, totals, health }) {
         الحالة:{" "}
         {health?.model_loaded
           ? "نموذج YOLO محمَّل"
+          : health?.is_lfs_pointer
+          ? "ملف النموذج هو مؤشر Git-LFS فقط — نفّذ git lfs pull"
+          : health?.model_present
+          ? "النموذج موجود لكن لم يُحمَّل (تحقّق من ultralytics)"
           : "وضع المحاكاة — أضف الأوزان لتفعيل YOLO"}
       </div>
     </aside>

@@ -60,8 +60,26 @@ class Detector:
         self.mode = "mock"
         self._try_load()
 
+    def _is_lfs_pointer(self) -> bool:
+        try:
+            if self.model_path.stat().st_size > 4096:
+                return False
+            with self.model_path.open("rb") as fh:
+                head = fh.read(64)
+            return head.startswith(b"version https://git-lfs.github.com/spec")
+        except OSError:
+            return False
+
     def _try_load(self) -> None:
         if not self.model_path.exists():
+            return
+        if self._is_lfs_pointer():
+            print(
+                f"[detector] {self.model_path} is a Git-LFS pointer "
+                "(run `git lfs pull` to fetch the real weights); using mock"
+            )
+            self.model = None
+            self.mode = "mock"
             return
         try:
             from ultralytics import YOLO  # type: ignore

@@ -49,7 +49,9 @@ def health() -> dict:
         "status": "ok",
         "detector_mode": det.mode,
         "model_path": str(det.model_path),
+        "model_present": det.model_path.exists(),
         "model_loaded": det.model is not None,
+        "is_lfs_pointer": det._is_lfs_pointer(),
         "categories": [
             {"ar": ar, "en": meta["en"], "color": meta["color"]}
             for ar, meta in CATEGORIES.items()
