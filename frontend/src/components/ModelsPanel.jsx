@@ -1,15 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 
-const HYGIENE = ["gloves", "mask", "headcover"];
-const ALL     = ["waste", "food", "gloves", "mask", "headcover"];
-
-const MODES = [
-  { key: "waste",     label: "تشغيل نموذج النفايات فقط",   models: ["waste"] },
-  { key: "food",      label: "تشغيل نموذج الطعام فقط",     models: ["food"]  },
-  { key: "ws_pair",   label: "تشغيل النفايات + الطعام",     models: ["waste", "food"] },
-  { key: "hygiene",   label: "تشغيل نماذج التزام العاملين", models: HYGIENE },
-  { key: "all",       label: "تشغيل الكل",                  models: ALL },
+/* ---------------------------------------------------------------------
+ * Three logical groups the user can toggle. Each group maps to one or
+ * more backend model names that the registry exposes.
+ * ------------------------------------------------------------------- */
+const GROUPS = [
+  { id: "waste",   label: "النفايات",        models: ["waste"] },
+  { id: "food",    label: "سلامة الغذاء",    models: ["food"]  },
+  { id: "hygiene", label: "التزام العاملين", models: ["gloves", "mask", "headcover"] },
 ];
+
+const ALL_MODELS = GROUPS.flatMap((g) => g.models);
 
 function statusClass(mode) {
   if (mode === "yolo") return "ok";
@@ -21,125 +22,112 @@ function statusBadge(mode) {
   if (mode === "mock") return "Mock";
   return "غير متوفر";
 }
-function setEq(a, b) {
-  if (a.length !== b.length) return false;
-  const sa = new Set(a);
-  return b.every((x) => sa.has(x));
+
+/* The three "groups" are *all* selected if every one of their models is
+ * present in activeModels. */
+function isGroupChecked(group, activeModels) {
+  return group.models.every((m) => activeModels.includes(m));
 }
 
 export default function ModelsPanel({ models, activeModels, onChange }) {
   const byName = Object.fromEntries((models || []).map((m) => [m.name, m]));
-  const isAvailable = (n) => byName[n]?.available;
+  const [warning, setWarning] = useState("");
 
-  // Determine which named mode (if any) the current selection matches.
-  const currentMode = MODES.find((m) => setEq(m.models, activeModels))?.key || "";
-
-  const toggleSingle = (name) => {
-    if (activeModels.includes(name)) {
-      const next = activeModels.filter((m) => m !== name);
-      onChange(next.length ? next : [name]); // never leave the registry empty
+  // Helper: compute the merged active list when a group is toggled.
+  function toggleGroup(group, checked) {
+    let next;
+    if (checked) {
+      // Add the group's models (dedup, preserving order).
+      const set = new Set(activeModels);
+      group.models.forEach((m) => set.add(m));
+      next = ALL_MODELS.filter((m) => set.has(m));
     } else {
-      onChange([...activeModels, name]);
+      next = activeModels.filter((m) => !group.models.includes(m));
     }
-  };
+    if (next.length === 0) {
+      flashWarning("يجب اختيار نموذج واحد على الأقل");
+      return;
+    }
+    clearWarning();
+    onChange(next);
+  }
 
-  // Order matches the user's mental model: waste/food first, then hygiene.
-  const renderModels = ["waste", "food", "gloves", "mask", "headcover"]
-    .map((n) => byName[n])
-    .filter(Boolean);
+  function selectAll() {
+    clearWarning();
+    onChange([...ALL_MODELS]);
+  }
+  function clearAll() {
+    flashWarning("يجب اختيار نموذج واحد على الأقل");
+  }
+  function flashWarning(msg) {
+    setWarning(msg);
+    setTimeout(() => setWarning((w) => (w === msg ? "" : w)), 3500);
+  }
+  function clearWarning() {
+    setWarning("");
+  }
 
   return (
     <aside className="card">
       <h2>نماذج التحليل</h2>
 
-      <div className="source-group">
-        {MODES.map((m) => {
-          const someAvailable = m.models.some(isAvailable);
-          const active = currentMode === m.key;
+      <div className="select-controls">
+        <button className="btn small" onClick={selectAll}>تحديد الكل</button>
+        <button className="btn small ghost" onClick={clearAll}>إلغاء الكل</button>
+      </div>
+
+      <div className="checkbox-group">
+        {GROUPS.map((group) => {
+          const checked = isGroupChecked(group, activeModels);
+          // Group is "available" if at least one of its models is loadable.
+          const available = group.models.some((m) => byName[m]?.available);
+          // Mixed availability: some of the underlying models are unavailable
+          // (relevant only for the hygiene group with 3 sub-models).
+          const total = group.models.length;
+          const ready = group.models.filter((m) => byName[m]?.available).length;
+          const isHygiene = group.id === "hygiene";
+
           return (
-            <button
-              key={m.key}
-              className={`source-btn ${active ? "active" : ""}`}
-              onClick={() => onChange(m.models)}
-              disabled={!someAvailable}
-              title={
-                !someAvailable
-                  ? "كل النماذج المطلوبة لهذا الوضع غير متوفرة"
-                  : ""
-              }
+            <label
+              key={group.id}
+              className={`checkbox-row ${checked ? "on" : ""} ${!available ? "disabled" : ""}`}
             >
-              <span>{m.label}</span>
-              <span className="badge">
-                {m.models.map((x) => byName[x]?.display_ar || x).join(" + ")}
+              <input
+                type="checkbox"
+                checked={checked}
+                disabled={!available}
+                onChange={(e) => toggleGroup(group, e.target.checked)}
+              />
+              <span className="checkbox-box" aria-hidden="true" />
+              <span className="checkbox-label">
+                <strong>{group.label}</strong>
+                {isHygiene && (
+                  <span className="checkbox-sub">
+                    {ready}/{total} نماذج جاهزة
+                  </span>
+                )}
+                {!available && (
+                  <span className="checkbox-sub off">غير متوفر</span>
+                )}
               </span>
-            </button>
+            </label>
           );
         })}
       </div>
 
-      <h2 style={{ marginTop: 18 }}>الموديلات</h2>
-      <div className="det-list">
-        {renderModels.map((m) => {
-          const isActive = activeModels.includes(m.name);
-          return (
-            <div
-              className={`model-row ${isActive ? "on" : "off"}`}
-              key={m.name}
-              style={{ borderInlineStartColor: m.color }}
-            >
-              <div className="model-row-main">
-                <button
-                  className={`model-toggle ${isActive ? "on" : "off"}`}
-                  onClick={() => toggleSingle(m.name)}
-                  disabled={!m.available}
-                  aria-pressed={isActive}
-                  title={
-                    !m.available
-                      ? `نموذج ${m.display_ar} غير متوفر حاليًا`
-                      : isActive ? "تعطيل" : "تفعيل"
-                  }
-                  style={{ borderColor: m.color }}
-                >
-                  <span className="swatch" style={{ background: m.color }} />
-                  <strong>{m.display_ar}</strong>
-                  <span className="conf">({m.display_en})</span>
-                </button>
-                <span className={`status-tag ${statusClass(m.mode)}`}>
-                  {isActive && m.available ? "نشط · " : ""}{statusBadge(m.mode)}
-                </span>
-              </div>
+      {warning && <div className="inline-warning">{warning}</div>}
 
-              {/* List of categories this model can emit */}
-              {m.categories?.length > 0 && (
-                <div className="model-cats">
-                  {m.categories.map((c) => (
-                    <span
-                      key={c.ar}
-                      className={`cat-pill sev-${c.severity || "info"}`}
-                      style={{ borderColor: c.color, color: c.color }}
-                    >
-                      {c.ar}
-                    </span>
-                  ))}
-                </div>
-              )}
-
-              {!m.available && (
-                <div className="model-row-note">
-                  نموذج {m.display_ar} غير متوفر حاليًا
-                  {m.is_lfs_pointer
-                    ? " — نفّذ git lfs pull لاسترجاع الأوزان."
-                    : !m.model_present
-                    ? ` — أضف الملف باسم ${m.name}_model.pt`
-                       + (m.legacy_names?.length
-                          ? ` (أو الاسم المحلي القديم: ${m.legacy_names.join("، ")})`
-                          : "") + "."
-                    : "."}
-                </div>
-              )}
-            </div>
-          );
-        })}
+      <h2 style={{ marginTop: 18 }}>حالة النماذج</h2>
+      <div className="model-status-list">
+        {(models || []).map((m) => (
+          <div className="model-status-row" key={m.name}>
+            <span className="model-status-dot" style={{ background: m.color }} />
+            <span className="model-status-name">{m.display_ar}</span>
+            <span className={`status-tag ${statusClass(m.mode)}`}>
+              {statusBadge(m.mode)}
+            </span>
+          </div>
+        ))}
       </div>
 
       <div className="footer-note">

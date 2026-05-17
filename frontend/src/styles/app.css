@@ -436,19 +436,123 @@ body {
 .vf-item { display: inline-flex; align-items: center; gap: 6px; }
 .vf-dot  { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 
-/* Compact category pills inside the models panel — kept for the models list,
-   but they no longer act as primary stats. */
-.model-cats {
-  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px;
+/* Checkbox-driven model selector
+   ------------------------------------------------------------------- */
+.select-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
 }
-.cat-pill {
+.btn.small {
+  padding: 6px 12px;
+  font-size: 12px;
+  border-radius: 10px;
+}
+.btn.small.ghost {
+  background: transparent;
+  color: var(--muted);
+}
+.btn.small.ghost:hover { color: var(--text); border-color: var(--accent); }
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.checkbox-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-2);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.checkbox-row:hover { border-color: rgba(56,189,248,0.5); }
+.checkbox-row.on {
+  border-color: rgba(56,189,248,0.6);
+  background: linear-gradient(135deg, rgba(56,189,248,0.10), rgba(129,140,248,0.06));
+}
+.checkbox-row.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.checkbox-row input[type="checkbox"] {
+  position: absolute;
+  width: 1px; height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.checkbox-box {
+  width: 20px; height: 20px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.15s ease;
+}
+.checkbox-row.on .checkbox-box {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+.checkbox-row.on .checkbox-box::after {
+  content: "";
+  width: 6px;
+  height: 10px;
+  border-right: 2px solid #0a0e17;
+  border-bottom: 2px solid #0a0e17;
+  transform: rotate(45deg) translate(-1px, -1px);
+}
+.checkbox-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.checkbox-label strong { font-weight: 700; font-size: 14px; }
+.checkbox-sub {
   font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 999px;
-  border: 1px solid;
-  background: rgba(8,11,20,0.55);
+  color: var(--muted);
 }
-.cat-pill.sev-violation { font-weight: 700; }
+.checkbox-sub.off { color: var(--danger); }
+
+.inline-warning {
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(248,113,113,0.12);
+  border: 1px solid rgba(248,113,113,0.45);
+  color: #fca5a5;
+  font-size: 12px;
+  text-align: center;
+}
+
+/* Compact per-file model status list */
+.model-status-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.model-status-row {
+  display: grid;
+  grid-template-columns: 10px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.model-status-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+}
+.model-status-name { color: var(--text); }
 
 .det-list { display: grid; gap: 8px; max-height: 380px; overflow: auto; }
 .det-item {
