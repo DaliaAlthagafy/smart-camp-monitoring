@@ -163,22 +163,8 @@ export default function Viewer({
   const showWebcam = source === "browser-webcam";
 
   return (
-    <section className="card">
-      <h2>الواجهة المباشرة</h2>
-      <div className="viewer" ref={containerRef}>
-        <div className="overlay">
-          <span className="tag">المصدر: {sourceLabel(source)}</span>
-          <span className={`tag ${engine === "YOLO" ? "tag-live" : "tag-mock"}`}>
-            المحرّك: {engine === "YOLO" ? "YOLO حقيقي" : "محاكاة"}
-          </span>
-          <span className="tag">FPS: {liveFps.toFixed(1)}</span>
-          <span className={`tag status-${status}`}>{statusLabel}</span>
-          <span className="tag">
-            وضوح الصندوق: {clarity === "high" ? "عالي" : "عادي"}
-          </span>
-          {modeLabel && <span className="tag">الوضع: {modeLabel}</span>}
-        </div>
-
+    <section className="card viewer-card">
+      <div className="viewer cinematic" ref={containerRef}>
         {/* Browser webcam: persistent <video> + overlay canvas. */}
         <video
           ref={webcamRef}
@@ -214,6 +200,13 @@ export default function Viewer({
               : "في انتظار أول إطار…"}
           </div>
         )}
+
+        {/* Minimal corner FPS readout — only when something is streaming. */}
+        {(frame || showWebcam) && (
+          <div className="viewer-fps" aria-hidden="true">
+            {liveFps.toFixed(1)} <span>fps</span>
+          </div>
+        )}
       </div>
 
       {/* Below-viewer KPI grid removed — operational metrics now live in
@@ -235,15 +228,4 @@ export default function Viewer({
       </div>
     </section>
   );
-}
-
-function sourceLabel(s) {
-  switch (s) {
-    case "synthetic":      return "بث تجريبي";
-    case "browser-webcam": return "كاميرا المتصفح";
-    case "webcam":         return "كاميرا الخادم";
-    case "rtsp":           return "RTSP";
-    case "upload":         return "ملف فيديو";
-    default:               return s;
-  }
 }

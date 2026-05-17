@@ -7,7 +7,7 @@ import StatsPanel from "./components/StatsPanel.jsx";
 const WS_BASE =
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 
-export const UI_VERSION = "ops-dashboard-v4";
+export const UI_VERSION = "clean-viewer-v5";
 
 const ALL_CATEGORIES = [
   "النفايات", "الطعام",

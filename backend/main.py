@@ -33,7 +33,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartcamp.api")
 
-BACKEND_VERSION = "ops-dashboard-v4"
+BACKEND_VERSION = "clean-viewer-v5"
 
 BASE_DIR = Path(__file__).parent
 UPLOAD_DIR = BASE_DIR / "uploads"
