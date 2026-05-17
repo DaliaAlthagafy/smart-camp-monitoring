@@ -50,7 +50,6 @@ function loadStoredActiveModels() {
 
 export default function App() {
   const [health, setHealth] = useState(null);
-  const [backendVersion, setBackendVersion] = useState(null);
   const [models, setModels] = useState([]);
   const [activeModels, setActiveModels] = useState(
     () => loadStoredActiveModels() || ["waste"]
@@ -87,7 +86,6 @@ export default function App() {
       try {
         const h = await fetch("/api/health").then((r) => r.json());
         setHealth(h);
-        setBackendVersion(h.version || null);
         setEngine(h.engine || "MOCK");
         setModels(h.models || []);
         const available = (h.models || []).filter((m) => m.available).map((m) => m.name);
@@ -353,10 +351,6 @@ export default function App() {
             <h1>مراقبة المخيم الذكية</h1>
             <div className="sub">
               Smart Camp Monitoring · لوحة تحكم مباشرة
-              <span className="version-chip" title="UI build tag">
-                UI Version: <strong>{UI_VERSION}</strong>
-                {backendVersion ? <> · backend: <strong>{backendVersion}</strong></> : null}
-              </span>
             </div>
           </div>
         </div>
