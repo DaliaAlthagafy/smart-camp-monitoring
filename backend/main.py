@@ -58,9 +58,15 @@ def _banner() -> None:
     log.info("Smart Camp Monitoring — BACKEND VERSION: %s", BACKEND_VERSION)
     log.info("Registered models:")
     for s in reg.statuses():
+        resolved = s.get("resolved_path") or "(none)"
+        canonical = s["model_path"]
+        using = Path(resolved).name if resolved != "(none)" else "—"
+        legacy_note = ""
+        if resolved != "(none)" and resolved != canonical:
+            legacy_note = " [via legacy filename]"
         log.info(
-            "  - %-6s (%s): mode=%s  path=%s",
-            s["name"], s["display_ar"], s["mode"], s["model_path"],
+            "  - %-9s (%s): mode=%-11s using=%s%s",
+            s["name"], s["display_ar"], s["mode"], using, legacy_note,
         )
     log.info("Active models: %s", " + ".join(reg.active) or "(none)")
     log.info(line)
