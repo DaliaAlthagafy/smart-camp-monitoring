@@ -33,7 +33,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartcamp.api")
 
-BACKEND_VERSION = "hygiene-debug-v10"
+BACKEND_VERSION = "mask-debug-v11"
 
 BASE_DIR = Path(__file__).parent
 UPLOAD_DIR = BASE_DIR / "uploads"

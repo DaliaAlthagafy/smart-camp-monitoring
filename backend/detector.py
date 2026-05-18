@@ -180,8 +180,14 @@ class ModelEntry:
         ))
         if kind == "gloves" and ("glove" in n or "hand" in n):
             return "بدون قفازات" if is_neg else "قفازات"
-        if kind == "mask" and ("mask" in n or "face" in n):
-            return "بدون كمامة" if is_neg else "كمامة"
+        if kind == "mask" and ("mask" in n or "face" in n or "covering" in n):
+            # An "incorrectly worn" mask counts as a violation, even though
+            # the class name doesn't carry a no_/without_/bare_ prefix.
+            improper = any(t in n for t in (
+                "incorrect", "improper", "wrong", "partial",
+                "chin", "nose_exposed", "off",
+            ))
+            return "بدون كمامة" if (is_neg or improper) else "كمامة"
         if kind == "headcover" and any(t in n for t in (
                 "head", "hair", "cap", "helmet", "hat", "hood", "cover",
                 "headgear", "bouffant", "scarf")):
@@ -200,12 +206,21 @@ class ModelEntry:
                 raw_total += 1
                 cls_id = int(box.cls[0])
                 cls_name = str(names.get(cls_id, cls_id)).lower()
+                # Tolerate dataset variants with spaces / dashes / dots
+                # in label names (e.g. "Mask Weared Incorrect").
+                normalized = (
+                    cls_name.replace(" ", "_").replace("-", "_").replace(".", "_")
+                )
                 confidence = float(box.conf[0])
                 raw_classes.append(f"{cls_name}:{confidence:.2f}")
 
                 category = self.class_map.get(cls_name)
+                if category is None and normalized != cls_name:
+                    category = self.class_map.get(normalized)
                 if category is None:
                     category = self._heuristic_map(cls_name)
+                if category is None and normalized != cls_name:
+                    category = self._heuristic_map(normalized)
                 if category is None:
                     # Log each unmapped class once so the user can fix the
                     # class_map / retrain instead of being puzzled silently.
@@ -365,19 +380,40 @@ class ModelRegistry:
                 color="#ef4444",
                 model_path=MODELS_DIR / "mask_model.pt",
                 legacy_names=["maskModel2.pt", "mask.pt"],
-                conf_threshold=0.25,
+                conf_threshold=0.15,
                 heuristic_kind="mask",
                 class_map={
-                    "mask":          "كمامة",
-                    "face_mask":     "كمامة",
-                    "with_mask":     "كمامة",
-                    "masked":        "كمامة",
-                    "no_mask":       "بدون كمامة",
-                    "no-mask":       "بدون كمامة",
-                    "nomask":        "بدون كمامة",
-                    "without_mask":  "بدون كمامة",
-                    "unmasked":      "بدون كمامة",
-                    "mask_weared_incorrect": "بدون كمامة",
+                    # Canonical positive labels
+                    "mask":            "كمامة",
+                    "face_mask":       "كمامة",
+                    "with_mask":       "كمامة",
+                    "masked":          "كمامة",
+                    "wearing_mask":    "كمامة",
+                    "mask_on":         "كمامة",
+                    "maskon":          "كمامة",
+                    "face_covering":   "كمامة",
+                    "covered_face":    "كمامة",
+                    # Canonical violation labels
+                    "no_mask":           "بدون كمامة",
+                    "no-mask":           "بدون كمامة",
+                    "nomask":            "بدون كمامة",
+                    "without_mask":      "بدون كمامة",
+                    "unmasked":          "بدون كمامة",
+                    "not_wearing_mask":  "بدون كمامة",
+                    "mask_off":          "بدون كمامة",
+                    "maskoff":           "بدون كمامة",
+                    "no_face_covering":  "بدون كمامة",
+                    "uncovered_face":    "بدون كمامة",
+                    # 3-class "improperly worn" labels (treated as violation)
+                    "mask_weared_incorrect":  "بدون كمامة",
+                    "mask_worn_incorrect":    "بدون كمامة",
+                    "incorrect_mask":         "بدون كمامة",
+                    "mask_incorrect":         "بدون كمامة",
+                    "improper_mask":          "بدون كمامة",
+                    "improperly_worn_mask":   "بدون كمامة",
+                    "partial_mask":           "بدون كمامة",
+                    "chin_mask":              "بدون كمامة",
+                    "nose_exposed":           "بدون كمامة",
                 },
             ),
             "headcover": ModelEntry(
