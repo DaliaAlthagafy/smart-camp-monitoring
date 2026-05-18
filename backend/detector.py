@@ -14,6 +14,7 @@ only that single model "unavailable" — the rest keep working.
 from __future__ import annotations
 
 import logging
+import os
 import random
 import time
 from dataclasses import dataclass, asdict, field
@@ -25,6 +26,16 @@ import numpy as np
 log = logging.getLogger("smartcamp.detector")
 
 MODELS_DIR = Path(__file__).parent / "models"
+
+# Some trained mask checkpoints emit numeric-only class names ("0", "1")
+# instead of semantic ones. The Kaggle 2-class mask dataset and a few of
+# its derivatives use the convention:   0 = with_mask   1 = without_mask
+# which we adopt as the default. The env vars below let the operator
+# flip the polarity in 10 seconds without re-training or editing code,
+# in case their checkpoint uses the reverse convention.
+MASK_CLASS_0 = os.environ.get("SCM_MASK_CLASS_0", "كمامة")
+MASK_CLASS_1 = os.environ.get("SCM_MASK_CLASS_1", "بدون كمامة")
+MASK_CLASS_2 = os.environ.get("SCM_MASK_CLASS_2", "بدون كمامة")  # 3-class "incorrect"
 
 # Per-category (Arabic) metadata shared with the frontend.
 CATEGORIES = {
@@ -414,6 +425,12 @@ class ModelRegistry:
                     "partial_mask":           "بدون كمامة",
                     "chin_mask":              "بدون كمامة",
                     "nose_exposed":           "بدون كمامة",
+                    # Numeric-only class names — overridable via env vars
+                    # SCM_MASK_CLASS_0 / _1 / _2 if the checkpoint uses
+                    # the opposite polarity.
+                    "0": MASK_CLASS_0,
+                    "1": MASK_CLASS_1,
+                    "2": MASK_CLASS_2,
                 },
             ),
             "headcover": ModelEntry(
