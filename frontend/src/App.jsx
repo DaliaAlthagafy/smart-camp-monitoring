@@ -7,7 +7,7 @@ import StatsPanel from "./components/StatsPanel.jsx";
 const WS_BASE =
   (location.protocol === "https:" ? "wss://" : "ws://") + location.host;
 
-export const UI_VERSION = "food-sync-v9";
+export const UI_VERSION = "hygiene-debug-v10";
 
 /* All Arabic categories the backend can emit. Used to seed a fully
  * populated counts object so the dashboard never breaks because a
