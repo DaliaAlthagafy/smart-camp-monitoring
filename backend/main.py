@@ -38,7 +38,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartcamp.api")
 
-BACKEND_VERSION = "polished-overlay-v13"
+BACKEND_VERSION = "instant-hygiene-v14"
 
 BASE_DIR = Path(__file__).parent
 UPLOAD_DIR = BASE_DIR / "uploads"

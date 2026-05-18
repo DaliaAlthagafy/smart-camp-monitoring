@@ -21,13 +21,6 @@ const FOOD_OK_CATEGORIES        = ["صالح"];
 const FOOD_WARN_CATEGORIES      = ["يحتاج فحص"];
 const FOOD_VIOLATION_CATEGORIES = ["متعفن"];
 
-function severityForCompliance(pct) {
-  if (pct === null) return "neutral";
-  if (pct >= 95) return "ok";
-  if (pct >= 70) return "warn";
-  return "violation";
-}
-
 function severityForFood({ fresh, atRisk, rotten }) {
   if (rotten > 0) return "violation";
   if (atRisk > 0) return "warn";
@@ -35,13 +28,19 @@ function severityForFood({ fresh, atRisk, rotten }) {
   return "neutral";
 }
 
-function severityLabel(sev) {
-  switch (sev) {
-    case "ok":        return "ضمن المعدلات الآمنة";
-    case "warn":      return "تنبيه — يحتاج مراجعة";
-    case "violation": return "خرق متعدد — تدخّل عاجل";
-    default:          return "في انتظار البيانات";
-  }
+/** Instant per-frame hygiene state — ANY violation on the current
+ *  frame flips immediately to "violation". No compliance-ratio
+ *  smoothing, no thresholds, no historical lag. */
+function severityForHygieneFrame({ ok, violations }) {
+  if (violations > 0) return "violation";
+  if (ok > 0)         return "ok";
+  return "neutral";
+}
+
+function hygieneStatusLabel({ ok, violations }) {
+  if (violations > 0) return "توجد مخالفات";
+  if (ok > 0)         return "ملتزم";
+  return "في انتظار البيانات";
 }
 
 function ModuleHead({ icon, title, active, statusBadge }) {
@@ -153,11 +152,18 @@ function HygieneModule({ totals, activeModels, models }) {
   const allActive  = hygieneActive.length === HYGIENE_MODELS.length;
   const someActive = hygieneActive.length > 0;
 
-  const ok = OK_CATEGORIES.reduce((s, c) => s + (totals[c] || 0), 0);
+  // Current-frame derived directly from `totals` (which is itself derived
+  // from the live detections array via useMemo). No accumulation, no
+  // smoothing, no debounce — what's on the frame right now is what
+  // drives the severity and the status label.
+  const ok         = OK_CATEGORIES.reduce((s, c) => s + (totals[c] || 0), 0);
   const violations = VIOLATION_CATEGORIES.reduce((s, c) => s + (totals[c] || 0), 0);
-  const total = ok + violations;
+  const total      = ok + violations;
   const compliance = total > 0 ? Math.round((ok / total) * 100) : null;
-  const sev = severityForCompliance(compliance);
+
+  // ANY violation on the current frame → instantly violation state.
+  const sev         = severityForHygieneFrame({ ok, violations });
+  const statusLabel = hygieneStatusLabel({ ok, violations });
 
   const badge =
     !someActive ? "غير نشط" :
@@ -172,6 +178,11 @@ function HygieneModule({ totals, activeModels, models }) {
         active={someActive}
         statusBadge={badge}
       />
+
+      <div className={`hygiene-banner sev-${sev}`}>
+        <span className="dot" />
+        {statusLabel}
+      </div>
 
       <div className="hygiene-main">
         <div className="hygiene-tile compliance">
@@ -189,7 +200,7 @@ function HygieneModule({ totals, activeModels, models }) {
         <div className="hygiene-tile violations">
           <div className="tile-label">عدد المخالفات</div>
           <div className="tile-value">{violations}</div>
-          <div className="tile-sub">{severityLabel(sev)}</div>
+          <div className="tile-sub">على الإطار الحالي</div>
         </div>
       </div>
 

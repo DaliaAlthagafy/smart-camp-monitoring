@@ -352,6 +352,48 @@ body {
 }
 
 /* Hygiene specifics */
+/* Per-frame hygiene status banner — flips instantly with the
+   detection stream, no compliance-ratio smoothing. */
+.hygiene-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 4px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid var(--border);
+  background: rgba(8,11,20,0.55);
+  letter-spacing: 0.2px;
+}
+.hygiene-banner .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 0 currentColor;
+}
+.hygiene-banner.sev-violation {
+  color: #fca5a5;
+  border-color: rgba(248,113,113,0.55);
+  background: rgba(248,113,113,0.10);
+}
+.hygiene-banner.sev-violation .dot {
+  animation: pulse-violation 1.6s infinite;
+}
+@keyframes pulse-violation {
+  0%   { box-shadow: 0 0 0 0 rgba(248,113,113,0.55); }
+  70%  { box-shadow: 0 0 0 6px rgba(248,113,113,0); }
+  100% { box-shadow: 0 0 0 0 rgba(248,113,113,0); }
+}
+.hygiene-banner.sev-ok {
+  color: #86efac;
+  border-color: rgba(34,197,94,0.5);
+  background: rgba(34,197,94,0.08);
+}
+.hygiene-banner.sev-neutral {
+  color: var(--muted);
+}
+
 .hygiene .hygiene-main {
   display: grid;
   grid-template-columns: 1.3fr 1fr;
