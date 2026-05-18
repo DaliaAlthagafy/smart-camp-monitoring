@@ -37,6 +37,12 @@ MASK_CLASS_0 = os.environ.get("SCM_MASK_CLASS_0", "كمامة")
 MASK_CLASS_1 = os.environ.get("SCM_MASK_CLASS_1", "بدون كمامة")
 MASK_CLASS_2 = os.environ.get("SCM_MASK_CLASS_2", "بدون كمامة")  # 3-class "incorrect"
 
+# Same trick for headcover — many public head-cover / PPE datasets ship
+# numeric-only class names. Default convention: 0=cover, 1=no_cover.
+HEADCOVER_CLASS_0 = os.environ.get("SCM_HEADCOVER_CLASS_0", "غطاء رأس")
+HEADCOVER_CLASS_1 = os.environ.get("SCM_HEADCOVER_CLASS_1", "بدون غطاء رأس")
+HEADCOVER_CLASS_2 = os.environ.get("SCM_HEADCOVER_CLASS_2", "بدون غطاء رأس")
+
 # Per-category (Arabic) metadata shared with the frontend.
 CATEGORIES = {
     # Waste
@@ -440,29 +446,48 @@ class ModelRegistry:
                 color="#f59e0b",
                 model_path=MODELS_DIR / "headcover_model.pt",
                 legacy_names=["headModel.pt", "head_cover.pt", "head.pt"],
-                conf_threshold=0.25,
+                conf_threshold=0.15,
                 heuristic_kind="headcover",
                 class_map={
+                    # Canonical positive labels
                     "head_cover":     "غطاء رأس",
                     "head-cover":     "غطاء رأس",
                     "headcover":      "غطاء رأس",
                     "head":           "غطاء رأس",
                     "hair_net":       "غطاء رأس",
                     "hairnet":        "غطاء رأس",
+                    "bouffant":       "غطاء رأس",
+                    "bouffant_cap":   "غطاء رأس",
                     "cap":            "غطاء رأس",
                     "hat":            "غطاء رأس",
                     "helmet":         "غطاء رأس",
                     "hard_hat":       "غطاء رأس",
-                    "bouffant":       "غطاء رأس",
                     "covered_head":   "غطاء رأس",
-                    "no_head_cover":  "بدون غطاء رأس",
-                    "no-head-cover":  "بدون غطاء رأس",
-                    "no_headcover":   "بدون غطاء رأس",
-                    "no_head":        "بدون غطاء رأس",
-                    "no_hair_net":    "بدون غطاء رأس",
-                    "uncovered_head": "بدون غطاء رأس",
-                    "no_hat":         "بدون غطاء رأس",
-                    "no_helmet":      "بدون غطاء رأس",
+                    "head_on":        "غطاء رأس",
+                    # Canonical violation labels (including the new aliases
+                    # explicitly requested by the user)
+                    "no_head_cover":     "بدون غطاء رأس",
+                    "no-head-cover":     "بدون غطاء رأس",
+                    "no_headcover":      "بدون غطاء رأس",
+                    "no_head":           "بدون غطاء رأس",
+                    "no_cap":            "بدون غطاء رأس",
+                    "no_hat":            "بدون غطاء رأس",
+                    "no_helmet":         "بدون غطاء رأس",
+                    "no_hair_net":       "بدون غطاء رأس",
+                    "no_hairnet":        "بدون غطاء رأس",
+                    "no_bouffant":       "بدون غطاء رأس",
+                    "bare_head":         "بدون غطاء رأس",
+                    "bareheaded":        "بدون غطاء رأس",
+                    "uncovered_head":    "بدون غطاء رأس",
+                    "without_head_cover": "بدون غطاء رأس",
+                    "head_off":          "بدون غطاء رأس",
+                    "headoff":           "بدون غطاء رأس",
+                    # Numeric-only class names — overridable via env vars
+                    # SCM_HEADCOVER_CLASS_0 / _1 / _2 if the checkpoint
+                    # uses the opposite polarity.
+                    "0": HEADCOVER_CLASS_0,
+                    "1": HEADCOVER_CLASS_1,
+                    "2": HEADCOVER_CLASS_2,
                 },
             ),
         }

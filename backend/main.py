@@ -23,7 +23,12 @@ from fastapi import (
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from detector import CATEGORIES, MASK_CLASS_0, MASK_CLASS_1, MASK_CLASS_2, get_registry
+from detector import (
+    CATEGORIES,
+    MASK_CLASS_0, MASK_CLASS_1, MASK_CLASS_2,
+    HEADCOVER_CLASS_0, HEADCOVER_CLASS_1, HEADCOVER_CLASS_2,
+    get_registry,
+)
 from streamer import annotate, encode_jpeg, stream_source, stream_synthetic
 
 logging.basicConfig(
@@ -33,7 +38,7 @@ logging.basicConfig(
 )
 log = logging.getLogger("smartcamp.api")
 
-BACKEND_VERSION = "mask-numeric-v12"
+BACKEND_VERSION = "polished-overlay-v13"
 
 BASE_DIR = Path(__file__).parent
 UPLOAD_DIR = BASE_DIR / "uploads"
@@ -72,6 +77,11 @@ def _banner() -> None:
         "Mask numeric class mapping: 0=%s  1=%s  2=%s"
         " (override with SCM_MASK_CLASS_0 / _1 / _2)",
         MASK_CLASS_0, MASK_CLASS_1, MASK_CLASS_2,
+    )
+    log.info(
+        "Headcover numeric class mapping: 0=%s  1=%s  2=%s"
+        " (override with SCM_HEADCOVER_CLASS_0 / _1 / _2)",
+        HEADCOVER_CLASS_0, HEADCOVER_CLASS_1, HEADCOVER_CLASS_2,
     )
     log.info("Active models: %s", " + ".join(reg.active) or "(none)")
     log.info(line)
